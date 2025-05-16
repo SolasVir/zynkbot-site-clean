@@ -10,7 +10,7 @@ async function askZynk() {
   appendMessage("user", userInput);
   inputBox.value = "";
 
-  const loading = appendMessage("bot", "⏳ Thinking...");
+  const loadingDiv = appendMessage("bot", "⏳ Thinking...");
 
   try {
     const response = await fetch("/.netlify/functions/ask-background", {
@@ -22,22 +22,22 @@ async function askZynk() {
     });
 
     if (!response.ok) {
-      loading.textContent = `⚠ Server error (${response.status})`;
+      loadingDiv.textContent = `⚠ Server error (${response.status})`;
       return;
     }
 
     const data = await response.json();
 
     if (data?.response && typeof data.response === "string") {
-      loading.textContent = data.response;
+      loadingDiv.textContent = data.response;
     } else if (data?.error) {
-      loading.textContent = `⚠ Error: ${data.error}`;
+      loadingDiv.textContent = `⚠ Error: ${data.error}`;
     } else {
-      loading.textContent = "⚠ Unexpected response format.";
+      loadingDiv.textContent = "⚠ Unexpected response format.";
     }
 
   } catch (err) {
-    loading.textContent = "⚠ Network error: " + err.message;
+    loadingDiv.textContent = "⚠ Network error: " + err.message;
   }
 }
 
@@ -48,5 +48,6 @@ function appendMessage(role, text) {
   div.textContent = text;
   chatLog.appendChild(div);
   chatLog.scrollTop = chatLog.scrollHeight; // auto-scroll
+  return div;
 }
 
