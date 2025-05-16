@@ -4,78 +4,54 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID;
-
 exports.handler = async function (event) {
   try {
-    const body = JSON.parse(event.body || "{}");
-    const message = body.message;
+    const body = JSON.parse(event.body);
+    const userMessage = body.message;
 
-    if (!message) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "No message provided in request." }),
-      };
-    }
+    console.log("📨 Incoming message:", userMessage);
 
-    console.log("📨 Incoming message:", message);
-
-    // Step 1: Create a new thread
     const thread = await openai.beta.threads.create();
-    const threadId = thread.id;
+    console.log("🧵 Created thread:", thread.id);
 
-    console.log("🧵 Created thread:", threadId);
-
-    // Step 2: Post user message to thread
-    await openai.beta.threads.messages.create(threadId, {
+    await openai.beta.threads.messages.create(thread.id, {
       role: "user",
-      content: message,
+      content: userMessage,
     });
-
     console.log("📩 Message posted to thread.");
 
-    // Step 3: Create run with assistant
-    const run = await openai.beta.threads.runs.create(threadId, {
-      assistant_id: ASSISTANT_ID,
+    const run = await openai.beta.threads.runs.create(thread.id, {
+      assistant_id: process.env.OPENAI_ASSISTANT_ID,
     });
+    console.log("🏃 Run started:", run.id);
 
-    const runId = run.id;
-    console.log("🏃 Run started:", runId);
+    // Polling loop
+    let runStatus;
+    do {
+      await new Promise((r) => setTimeout(r, 1500));
+      runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+      console.log("🔁 Run status:", runStatus.status);
+    } while (runStatus.status !== "completed" && runStatus.status !== "failed");
 
-    // Step 4: Poll until run is complete
-    let runStatus = run.status;
-    while (runStatus !== "completed" && runStatus !== "failed" && runStatus !== "cancelled") {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      const updatedRun = await openai.beta.threads.runs.retrieve(threadId, runId);
-      runStatus = updatedRun.status;
-      console.log("🔁 Run status:", runStatus);
+    if (runStatus.status === "failed") {
+      throw new Error("Assistant run failed.");
     }
 
-    if (runStatus !== "completed") {
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: `Run did not complete: ${runStatus}` }),
-      };
-    }
+    const messages = await openai.beta.threads.messages.list(thread.id);
+    const responseMessage = messages.data
+      .find((m) => m.role === "assistant")?.content[0]?.text?.value;
 
-    // Step 5: Retrieve messages from thread
-    const messages = await openai.beta.threads.messages.list(threadId);
-    const lastMessage = messages.data
-      .filter(m => m.role === "assistant")
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
-
-    const replyText = lastMessage?.content?.[0]?.text?.value || "⚠ No reply received.";
+    console.log("✅ Assistant replied:", responseMessage);
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ response: replyText }),
+      body: JSON.stringify({ responseText: responseMessage }),
     };
-
-  } catch (err) {
-    console.error("❌ Error:", err);
+  } catch (error) {
+    console.error("❌ Error in ask-background:", error.message);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
+      body: JSON.stringify({ error: error.message }),
     };
   }
 };
