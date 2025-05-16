@@ -1,0 +1,23 @@
+{
+  "name": "zynkbotsite",
+  "version": "1.0.0",
+  "description": "",
+  "main": "zynkbot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SolasVir/zynkbot-site-clean.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SolasVir/zynkbot-site-clean/issues"
+  },
+  "homepage": "https://github.com/SolasVir/zynkbot-site-clean#readme",
+  "dependencies": {
+    "openai": "^4.98.0"
+  }
+}
